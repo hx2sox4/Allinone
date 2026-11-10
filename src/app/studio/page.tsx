@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { isCopyPending } from "@/lib/jobs";
 import { MODELS, getModel } from "@/lib/higgsfield/registry";
 import { BriefForm } from "@/components/brief-form";
+import { CopyPanel, type CopyView } from "@/components/copy-panel";
 import { JobCard, type JobView } from "@/components/job-card";
 import { TopNav } from "@/components/top-nav";
 
@@ -88,6 +89,7 @@ async function Studio() {
                     </form>
                   </div>
                 )}
+                <CopyPanel briefId={b.id} copy={(b.copyDraft as CopyView | null) ?? null} warnings={b.copyWarnings} model={b.copyModel} editable={editable} />
                 <ul className="mt-3 space-y-3">{mine.map((j) => <JobCard key={j.id} job={toView(j)} />)}</ul>
               </article>
             );

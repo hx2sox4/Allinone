@@ -135,6 +135,9 @@ model Brief {
   modelKey    String
   modelReason String
   variants    Int
+  copyDraft    Json? // 글샘이 쓴 문구 초안 (LLM 출력)
+  copyWarnings String[] // 코드 규칙 검사에서 나온 확인 사항
+  copyModel    String?
   createdAt   DateTime        @default(now())
   jobs        GenerationJob[]
 

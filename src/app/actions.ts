@@ -7,6 +7,7 @@ import { canEdit, currentContext, currentUser, endSession, hashPassword, startSe
 import { db } from "@/lib/db";
 import { approveBrief, createBrief, createVideoFromAsset, uploadToHiggsfield } from "@/lib/briefs";
 import { cancelJob, defaultDeps, submitJob } from "@/lib/jobs";
+import { writeCopy } from "@/lib/llm/copy";
 
 export type FormState = { error?: string } | undefined;
 
@@ -120,6 +121,24 @@ export async function approveBriefAction(form: FormData) {
   await approveBrief(brief.id);
   revalidatePath("/studio");
   revalidatePath("/office");
+}
+
+/** 글샘에게 브리프의 문구 초안을 받는다. LLM 호출이므로 소액 과금된다. */
+export async function writeCopyAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const c = await currentContext();
+  if (!c) redirect("/login");
+  if (!c.brand) redirect("/onboarding");
+  if (!canEdit(c.role)) return { error: "권한이 없습니다" };
+  try {
+    const brief = await ownBrief(String(form.get("briefId")));
+    const b = c.brand;
+    const r = await writeCopy({ businessName: b.businessName, industry: b.industry, speechLevel: b.speechLevel, voice: b.voice, audience: b.audience, doSay: b.doSay, dontSay: b.dontSay, news: `${brief.what} ${b.offers ? `(가게 소개: ${b.offers})` : ""}`.trim() });
+    await db.brief.update({ where: { id: brief.id }, data: { copyDraft: r.draft, copyWarnings: r.warnings, copyModel: r.model } });
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "문구를 만들지 못했습니다" };
+  }
+  revalidatePath("/studio");
+  return undefined;
 }
 
 export async function cancelBriefAction(form: FormData) {
