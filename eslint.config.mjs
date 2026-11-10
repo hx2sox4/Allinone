@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // 가져온 외부 코드(MIT). 원본 그대로 둔다.
+    "src/vendor/**",
   ]),
 ]);
 

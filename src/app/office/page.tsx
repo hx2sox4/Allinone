@@ -1,31 +1,23 @@
 import { Suspense } from "react";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { canEdit, currentContext } from "@/lib/auth";
-import { officeState } from "@/lib/office";
-import { Office } from "@/components/office";
-import { TopNav } from "@/components/top-nav";
+import { db } from "@/lib/db";
+import { OfficeApp } from "@/components/bureau/OfficeApp";
 
 async function OfficeView() {
   const c = await currentContext();
   if (!c) redirect("/login");
   if (!c.brand) redirect("/onboarding");
-  const state = await officeState(c.workspace.id);
-  return (
-    <>
-      <TopNav current="/office" title={`${c.brand.businessName} 마케팅팀 사무실`} />
-      <p className="-mt-2 mb-4 text-sm"><Link href="/intro" className="font-semibold text-emerald-700 underline">팀 소개 다시 보기</Link></p>
-      <Office initial={state} canEdit={canEdit(c.role)} />
-    </>
-  );
+  const rows = await db.mission.findMany({ where: { workspaceId: c.workspace.id }, orderBy: { createdAt: "desc" }, take: 30 });
+  const missions = rows.map((m) => ({ id: m.id, title: m.title, prompt: m.prompt, status: m.status, createdAt: m.createdAt.getTime(), endedAt: m.endedAt?.getTime() ?? null }));
+  const llmModel = process.env.LLM_API_KEY || process.env.DEEPSEEK_API_KEY ? (process.env.LLM_MODEL ?? "deepseek-flash") : "";
+  return <OfficeApp brandName={c.brand.businessName} canEdit={canEdit(c.role)} llmModel={llmModel} initialMissions={missions} />;
 }
 
 export default function OfficePage() {
   return (
-    <main className="mx-auto max-w-3xl px-4 py-6">
-      <Suspense fallback={<p className="text-sm text-stone-500">사무실 문을 여는 중</p>}>
-        <OfficeView />
-      </Suspense>
-    </main>
+    <Suspense fallback={<p className="p-6 text-sm text-stone-500">사무실 문을 여는 중</p>}>
+      <OfficeView />
+    </Suspense>
   );
 }

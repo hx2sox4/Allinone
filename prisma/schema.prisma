@@ -35,11 +35,11 @@ enum Approval {
 }
 
 model User {
-  id           String       @id @default(cuid())
-  email        String       @unique
+  id           String          @id @default(cuid())
+  email        String          @unique
   name         String
   passwordHash String
-  createdAt    DateTime     @default(now())
+  createdAt    DateTime        @default(now())
   sessions     Session[]
   memberships  Membership[]
   jobs         GenerationJob[]
@@ -54,6 +54,7 @@ model Session {
 }
 
 model Workspace {
+  missions    Mission[]
   id          String          @id @default(cuid())
   name        String
   createdAt   DateTime        @default(now())
@@ -124,22 +125,23 @@ model GenerationJob {
 
 // 브리프: "무엇을, 어느 채널에, 몇 개" 한 번의 요청. 시안 작업 여러 개를 묶는다.
 model Brief {
-  id          String          @id @default(cuid())
-  workspaceId String
-  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  createdById String
-  what        String
-  channel     String
-  ratio       String
-  ratioNote   String? // 원하는 화면비를 모델이 지원하지 않아 바꾼 경우의 설명
-  modelKey    String
-  modelReason String
-  variants    Int
+  id           String          @id @default(cuid())
+  workspaceId  String
+  workspace    Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdById  String
+  what         String
+  channel      String
+  ratio        String
+  ratioNote    String? // 원하는 화면비를 모델이 지원하지 않아 바꾼 경우의 설명
+  modelKey     String
+  modelReason  String
+  variants     Int
   copyDraft    Json? // 글샘이 쓴 문구 초안 (LLM 출력)
   copyWarnings String[] // 코드 규칙 검사에서 나온 확인 사항
   copyModel    String?
-  createdAt   DateTime        @default(now())
-  jobs        GenerationJob[]
+  missionId    String?
+  createdAt    DateTime        @default(now())
+  jobs         GenerationJob[]
 
   @@index([workspaceId, createdAt])
 }
@@ -158,24 +160,24 @@ model BrandAsset {
 }
 
 model Asset {
-  id          String        @id @default(cuid())
-  workspaceId String
-  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  jobId       String
-  job         GenerationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  kind        AssetKind
-  storageKey  String
-  contentType String
-  bytes       Int
-  sourceUrl   String
-  aiGenerated Boolean       @default(true) // AI 생성물 표시 의무 대응용 기록
-  createdAt   DateTime      @default(now())
-  approval    Approval      @default(PENDING)
+  id                 String        @id @default(cuid())
+  workspaceId        String
+  workspace          Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  jobId              String
+  job                GenerationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  kind               AssetKind
+  storageKey         String
+  contentType        String
+  bytes              Int
+  sourceUrl          String
+  aiGenerated        Boolean       @default(true) // AI 생성물 표시 의무 대응용 기록
+  createdAt          DateTime      @default(now())
+  approval           Approval      @default(PENDING)
   // 버전 기록: 문구를 얹은 새 버전은 원본을 parentAssetId로 가리킨다.
-  parentAssetId String?
-  version       Int         @default(1)
-  overlayText   String?
-  virtualPersonLabel Boolean @default(false) // '가상인물' 표시를 넣었는지
+  parentAssetId      String?
+  version            Int           @default(1)
+  overlayText        String?
+  virtualPersonLabel Boolean       @default(false) // '가상인물' 표시를 넣었는지
 
   @@unique([jobId, sourceUrl])
 }
@@ -184,4 +186,36 @@ model WebhookDelivery {
   webhookId  String   @id
   requestId  String
   receivedAt DateTime @default(now())
+}
+
+// 사무실 임무. 사장(한결)에게 한 줄로 준 일 하나.
+model Mission {
+  id          String         @id @default(cuid())
+  workspaceId String
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdById String
+  prompt      String
+  title       String
+  status      String         @default("working") // working | done | stopped | error
+  stage       String         @default("plan")
+  state       Json           @default("{}")
+  seq         Int            @default(0)
+  busyUntil   DateTime       @default(now())
+  createdAt   DateTime       @default(now())
+  endedAt     DateTime?
+  events      MissionEvent[]
+
+  @@index([workspaceId, createdAt])
+}
+
+// 임무 중 실제로 일어난 일의 기록. 사무실 화면과 다시보기는 이 기록만 재생한다.
+model MissionEvent {
+  id        String   @id @default(cuid())
+  missionId String
+  mission   Mission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  seq       Int
+  at        DateTime @default(now())
+  ev        Json
+
+  @@unique([missionId, seq])
 }
