@@ -14,7 +14,6 @@ export async function GET() {
 export async function POST(req: Request) {
   const c = await currentContext();
   if (!c) return new Response("unauthorized", { status: 401 });
-  if (!c.brand) return Response.json({ error: "브랜드 기억을 먼저 저장해 주세요" }, { status: 400 });
   if (!canEdit(c.role)) return Response.json({ error: "일을 맡길 권한이 없습니다" }, { status: 403 });
   try {
     const body = (await req.json()) as { prompt?: string };

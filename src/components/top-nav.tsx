@@ -3,15 +3,13 @@ import { logout } from "@/app/actions";
 
 const LINKS = [
   { href: "/office", label: "사무실" },
-  { href: "/studio", label: "제작실" },
-  { href: "/library", label: "보관함" },
-  { href: "/onboarding", label: "브랜드 기억" },
+  { href: "/account", label: "모의 계좌" },
 ];
 
 export function TopNav({ current, title }: { current: string; title: string }) {
   return (
     <header className="mb-5">
-      <p className="text-sm font-semibold text-emerald-700">일손</p>
+      <p className="text-sm font-semibold text-emerald-700">일손 트레이딩 데스크</p>
       <h1 className="text-2xl font-bold">{title}</h1>
       <nav className="mt-3 flex flex-wrap items-center gap-x-1 gap-y-2 text-sm" aria-label="주 메뉴">
         {LINKS.map((l) => (

@@ -10,6 +10,7 @@
     "test": "vitest run",
     "worker": "tsx scripts/worker.ts",
     "mock": "tsx scripts/mock-higgsfield.ts",
+    "mock:desk": "tsx scripts/mock-desk.ts",
     "db:push": "prisma db push",
     "typecheck": "tsc --noEmit"
   },

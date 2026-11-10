@@ -1,6 +1,6 @@
 // 픽셀 그림은 전부 이 파일의 코드로 그린다. 외부 이미지나 다른 프로젝트의 그림을 쓰지 않는다.
 import type { Member } from "@/lib/team";
-import type { Mood } from "@/lib/office";
+type Mood = "working" | "waiting" | "done" | "idle" | "soon";
 
 export const OFFICE_W = 256;
 export const OFFICE_H = 168;

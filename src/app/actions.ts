@@ -27,11 +27,11 @@ export async function signup(_prev: FormState, form: FormData): Promise<FormStat
       email: p.data.email,
       name: p.data.name,
       passwordHash: await hashPassword(p.data.password),
-      memberships: { create: { role: "OWNER", workspace: { create: { name: `${p.data.name}의 가게` } } } },
+      memberships: { create: { role: "OWNER", workspace: { create: { name: `${p.data.name}의 데스크` } } } },
     },
   });
   await startSession(user.id);
-  redirect("/onboarding");
+  redirect("/intro");
 }
 
 export async function login(_prev: FormState, form: FormData): Promise<FormState> {

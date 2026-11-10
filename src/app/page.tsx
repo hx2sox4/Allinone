@@ -5,7 +5,7 @@ import { currentContext } from "@/lib/auth";
 async function Gate(): Promise<never> {
   const c = await currentContext();
   if (!c) redirect("/login");
-  redirect(c.brand ? "/office" : "/onboarding");
+  redirect("/office");
 }
 
 export default function Home() {

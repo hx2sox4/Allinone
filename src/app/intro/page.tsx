@@ -6,8 +6,7 @@ import { Intro } from "@/components/intro";
 async function IntroView() {
   const c = await currentContext();
   if (!c) redirect("/login");
-  if (!c.brand) redirect("/onboarding");
-  return <Intro businessName={c.brand.businessName} ownerName={c.user.name} />;
+  return <Intro ownerName={c.user.name} />;
 }
 
 export default function IntroPage() {

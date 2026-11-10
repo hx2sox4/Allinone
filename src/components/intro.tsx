@@ -48,7 +48,7 @@ function Typed({ text }: { text: string }) {
   );
 }
 
-export function Intro({ businessName, ownerName }: { businessName: string; ownerName: string }) {
+export function Intro({ ownerName }: { ownerName: string }) {
   const router = useRouter();
   const [step, setStep] = useState(0); // 0: 제목, 1..5: 직원, 6: 출근 완료
   const last = TEAM.length + 1;
@@ -81,8 +81,8 @@ export function Intro({ businessName, ownerName }: { businessName: string; owner
           {step === 0 && (
             <div className="intro-in text-center">
               <p className="text-sm font-semibold tracking-widest text-emerald-300">일손</p>
-              <h1 className="mt-3 text-3xl font-bold leading-snug">{businessName}<br />마케팅팀이 출근했습니다</h1>
-              <p className="mt-4 text-stone-300">{ownerName} 사장님, 오늘부터 함께 일할 다섯 명을 소개합니다.</p>
+              <h1 className="mt-3 text-3xl font-bold leading-snug">일손 트레이딩 데스크가<br />출근했습니다</h1>
+              <p className="mt-4 text-stone-300">{ownerName} 대표님, 오늘부터 함께 일할 다섯 명을 소개합니다. 지금은 모의매매만 합니다.</p>
               <div className="mt-8 flex justify-center gap-2">
                 {TEAM.map((m) => <Portrait key={m.key} member={m} size={44} />)}
               </div>
@@ -121,7 +121,7 @@ export function Intro({ businessName, ownerName }: { businessName: string; owner
                 {TEAM.map((m) => <Portrait key={m.key} member={m} size={52} />)}
               </div>
               <h1 className="mt-6 text-3xl font-bold">전원 출근 완료</h1>
-              <p className="mt-3 text-stone-300">사무실에서 팀원을 누르면 지금 하는 일을 볼 수 있습니다. 지금은 빛나가 이미지와 영상을 만들 수 있습니다.</p>
+              <p className="mt-3 text-stone-300">사무실에서 한결에게 종목과 시간축을 말하면 팀이 백테스트, 뉴스, 진입 신호, 리스크를 차례로 확인합니다. 실제 돈과 실제 주문은 없습니다.</p>
             </div>
           )}
         </div>

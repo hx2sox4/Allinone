@@ -5,7 +5,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { logout } from "@/app/actions";
-import { STAFF, type MEvent, type MLogged, type MissionView } from "@/lib/mission-events";
+import { isDeskEvent, STAFF, type MEvent, type MLogged, type MissionView } from "@/lib/mission-events";
+import { DeskReport } from "./DeskReport";
 import { emptyState, reduce, type OfficeState } from "./state";
 import type { Hit, TimeOfDay } from "./engine";
 
@@ -29,7 +30,7 @@ function labelOf(hit: Hit): string | null {
   if (id.startsWith("desk-") || id.startsWith("chair-desk-")) return "직원 자리";
   if (id.startsWith("zone:")) return "팀 소개";
   if (id.startsWith("plant-")) return "화분";
-  const map: Record<string, string> = { board: "계획판 · 누가 무엇을 하는지", chefDesk: "한결의 책상 · 계획과 보고", chefChair: "한결에게 일 맡기기", printer: "프린터 · 완성된 결과물", shelf: "책장 · 지난 일과 다시보기", rack: "서버 · 연결된 AI", door: "문 · 팀 소개", window: "창문 · 낮, 저녁, 밤", clock: "시계", neon: "네온 간판", coffee: "커피 머신", cooler: "정수기", lamp: "스탠드", "lamp-r": "스탠드", jukebox: "주크박스 (음악은 넣지 않았습니다)", sofa: "소파", easel: "이젤", bin: "휴지통", tableLow: "탁자", poster: "포스터" };
+  const map: Record<string, string> = { board: "계획판 · 누가 무엇을 하는지", chefDesk: "한결의 책상 · 계획과 보고", chefChair: "한결에게 일 맡기기", printer: "프린터 · 분석 보고서", shelf: "책장 · 지난 일과 다시보기", rack: "서버 · 연결된 AI", door: "문 · 팀 소개", window: "창문 · 낮, 저녁, 밤", clock: "시계", neon: "네온 간판", coffee: "커피 머신", cooler: "정수기", lamp: "스탠드", "lamp-r": "스탠드", jukebox: "주크박스 (음악은 넣지 않았습니다)", sofa: "소파", easel: "이젤", bin: "휴지통", tableLow: "탁자", poster: "포스터" };
   return map[id] ?? null;
 }
 
@@ -38,7 +39,7 @@ interface BubbleView { id: string; mode: "ask" | "full" | "tag"; name: string; t
 const W = 352, H = 256;
 const short = (t: string, n = 44) => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
 
-export function OfficeApp({ brandName, canEdit, llmModel, initialMissions }: { brandName: string; canEdit: boolean; llmModel: string; initialMissions: MissionView[] }) {
+export function OfficeApp({ canEdit, llmModel, initialMissions }: { canEdit: boolean; llmModel: string; initialMissions: MissionView[] }) {
   const wrap = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -70,7 +71,7 @@ export function OfficeApp({ brandName, canEdit, llmModel, initialMissions }: { b
   const apply = useCallback((ev: MEvent, live: boolean) => {
     const e = eng.current;
     if (!e) return;
-    if (ev.k !== "copy") e.world.apply(ev, live);
+    if (!isDeskEvent(ev)) e.world.apply(ev, live);
     setSt((s) => reduce(s, ev, Date.now()));
   }, []);
 
@@ -366,12 +367,12 @@ export function OfficeApp({ brandName, canEdit, llmModel, initialMissions }: { b
     <div className="bu-root">
       <header className="bu-top">
         <div className="min-w-0">
-          <p className="bu-brand">{brandName} 마케팅팀</p>
+          <p className="bu-brand">일손 트레이딩 데스크</p>
           <p className="bu-sub">{replaying ? `다시보기 · ${mission?.title ?? ""}` : mission ? `${!st.ended ? "진행 중" : mission.status === "done" ? "완료" : mission.status === "stopped" ? "중단" : mission.status === "error" ? "오류" : "마무리 중"} · ${mission.title}` : "한결에게 일을 맡겨 보세요"}</p>
         </div>
         <div className="bu-actions">
           {mission?.status === "working" && !replaying && canEdit && <button onClick={stop} className="bu-btn bu-warn">멈추기</button>}
-          <button onClick={() => setModal({ kind: "files" })} className="bu-btn">결과물{st.files.length + (st.copy ? 1 : 0) > 0 ? ` ${st.files.length + (st.copy ? 1 : 0)}` : ""}</button>
+          <button onClick={() => setModal({ kind: "files" })} className="bu-btn">보고서{st.desk.backtest ? " 1" : ""}</button>
           <button onClick={() => setModal({ kind: "history" })} className="bu-btn">지난 일</button>
           <button onClick={() => setModal({ kind: "menu" })} className="bu-btn" aria-label="메뉴">메뉴</button>
         </div>
@@ -418,10 +419,10 @@ export function OfficeApp({ brandName, canEdit, llmModel, initialMissions }: { b
         {st.error && <p className="bu-err">오류: {st.error}</p>}
         <form onSubmit={(e) => { e.preventDefault(); void submit(); }} className="bu-form">
           <label htmlFor="bu-input" className="bu-who">한결</label>
-          <input id="bu-input" ref={input} value={draft} onChange={(e) => setDraft(e.target.value)} disabled={!canEdit || (mission?.status === "working" && !replaying)} maxLength={500} placeholder={mission?.status === "working" && !replaying ? "지금 일이 끝나면 새 일을 맡길 수 있습니다" : "예: 11월 생강라떼 출시 홍보물 만들어줘. 인스타용 사진과 문구."} className="bu-input" />
+          <input id="bu-input" ref={input} value={draft} onChange={(e) => setDraft(e.target.value)} disabled={!canEdit || (mission?.status === "working" && !replaying)} maxLength={500} placeholder={mission?.status === "working" && !replaying ? "지금 일이 끝나면 새 일을 맡길 수 있습니다" : "예: 비트코인 4시간봉 점검하고 조건 맞으면 모의 매수해줘"} className="bu-input" />
           <button disabled={sending || !draft.trim() || !canEdit} className="bu-send">맡기기</button>
         </form>
-        <p className="bu-hint">말풍선은 실제로 진행된 일만 보여 줍니다. 이미지와 영상은 비용을 승인한 뒤에만 만듭니다. 직원, 계획판, 프린터, 책장을 눌러 보세요.</p>
+        <p className="bu-hint">모의매매만 합니다. 실제 돈과 실제 주문은 없습니다. 말풍선은 실제로 진행된 일만 보여 줍니다. 직원, 계획판, 프린터, 책장을 눌러 보세요.</p>
       </footer>
 
       {toast && <div className="bu-toast" role="status">{toast}</div>}
@@ -470,31 +471,9 @@ function ModalBody({ modal, st, mission, missions, replaying, llmModel, onReplay
   if (modal.kind === "files") {
     return (
       <>
-        <h2>결과물 {replaying && <small>다시보기</small>}</h2>
-        {!st.copy && st.files.length === 0 && <p className="bu-dim">{mission ? "아직 완성된 결과물이 없습니다." : "일을 맡기면 완성된 결과물이 여기에 나옵니다."}</p>}
-        {st.files.length > 0 && (
-          <div className="bu-files">
-            {st.files.map((f) => (
-              <figure key={f.assetId}>
-                {f.kind === "video" ? <video src={`/api/assets/${f.assetId}`} controls playsInline /> : (
-                  // eslint-disable-next-line @next/next/no-img-element -- 로그인한 사용자만 보는 내부 주소라 next/image 최적화를 쓰지 않는다
-                  <img src={`/api/assets/${f.assetId}`} alt="AI로 만든 이미지 시안" />
-                )}
-                <figcaption>{f.kind === "video" ? "5초 영상" : "이미지 시안"} · AI 생성물 · <Link href={`/library/${f.assetId}`}>문구 얹기와 내려받기</Link></figcaption>
-              </figure>
-            ))}
-          </div>
-        )}
-        {st.copy && (
-          <div className="bu-copy">
-            <h3>인스타그램 캡션</h3><p>{st.copy.draft.instagram.caption}</p>
-            <p className="bu-dim">{st.copy.draft.instagram.hashtags.map((h) => (h.startsWith("#") ? h : `#${h}`)).join(" ")}</p>
-            <h3>이미지 위 문구</h3><p>{st.copy.draft.image_overlay.join(" / ")}</p>
-            <h3>문자 광고</h3><p>{st.copy.draft.sms}</p>
-            {st.copy.warnings.length > 0 && <div className="bu-warnbox"><b>확인이 필요한 점</b>{st.copy.warnings.map((w) => <p key={w}>{w}</p>)}</div>}
-            <p className="bu-dim">AI가 쓴 초안입니다 ({st.copy.model}). 사실과 표현을 확인한 뒤 쓰세요.</p>
-          </div>
-        )}
+        <h2>분석 보고서 {replaying && <small>다시보기</small>}</h2>
+        {!st.desk.backtest && !st.desk.news ? <p className="bu-dim">{mission ? "아직 나온 보고가 없습니다." : "일을 맡기면 분석 보고서가 여기에 나옵니다."}</p> : <DeskReport desk={st.desk} />}
+        <p><Link href="/account">모의 계좌 보기</Link></p>
       </>
     );
   }
@@ -522,7 +501,6 @@ function ModalBody({ modal, st, mission, missions, replaying, llmModel, onReplay
         <h2>팀 소개</h2>
         <ul className="bu-list">
           {Object.entries(STAFF).map(([k, v]) => <li key={k}><b>{v.name}</b> {v.title}<span className="bu-detail">{v.what}</span></li>)}
-          <li className="bu-dim"><b>나루</b> 채널 담당, <b>셈</b> 분석 담당은 아직 일을 하지 않습니다. 게시 예약과 성과 분석은 다음 단계에서 붙입니다.</li>
         </ul>
         <p className="bu-dim">직원은 일을 받을 때만 문으로 들어와 자리에 앉습니다.</p>
       </>
@@ -533,8 +511,9 @@ function ModalBody({ modal, st, mission, missions, replaying, llmModel, onReplay
       <>
         <h2>연결된 AI</h2>
         <ul className="bu-list">
-          <li><b>글과 계획</b> {llmModel || "설정되지 않음"}<span className="bu-detail">한결의 일 나누기와 글샘의 문구에 씁니다.</span></li>
-          <li><b>이미지와 영상</b> Higgsfield<span className="bu-detail">이미지는 Z-Image Turbo, 영상은 Kling 2.5 Turbo를 씁니다. 만들기 전에 견적을 받고 승인 후 제출합니다.</span></li>
+          <li><b>LLM</b> {llmModel || "설정되지 않음"}<span className="bu-detail">한결의 일 정하기와 하린의 헤드라인 판단에만 씁니다. 전략, 신호, 주문 수량은 LLM이 아니라 정해진 규칙이 정합니다.</span></li>
+          <li><b>시세</b> Hyperliquid 공개 API<span className="bu-detail">키 없이 받습니다. Propr가 거래하는 Hyperliquid 무기한과 같은 가격입니다.</span></li>
+          <li><b>뉴스</b> RSS 헤드라인<span className="bu-detail">CoinDesk, Cointelegraph 공개 RSS의 제목과 링크만 씁니다. NEWS_FEEDS 환경 변수로 바꿀 수 있습니다.</span></li>
         </ul>
         <p className="bu-dim">창문 시간대: {tod === "auto" ? "자동" : tod === "day" ? "낮" : tod === "evening" ? "저녁" : "밤"} (창문을 누르면 바뀝니다)</p>
       </>
@@ -544,9 +523,7 @@ function ModalBody({ modal, st, mission, missions, replaying, llmModel, onReplay
     <>
       <h2>메뉴</h2>
       <ul className="bu-list bu-menu">
-        <li><Link href="/library">보관함 (모든 결과물, 문구 얹기, 승인)</Link></li>
-        <li><Link href="/studio">제작실 (브리프를 직접 적어서 만들기)</Link></li>
-        <li><Link href="/onboarding">브랜드 기억 고치기</Link></li>
+        <li><Link href="/account">모의 계좌 (포지션, 거래 기록, 리스크 설정)</Link></li>
         <li><Link href="/intro">팀 소개 다시 보기</Link></li>
         <li><form action={logout}><button className="bu-link">로그아웃</button></form></li>
       </ul>

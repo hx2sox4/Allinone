@@ -55,6 +55,8 @@ model Session {
 
 model Workspace {
   missions    Mission[]
+  paper       PaperAccount?
+  paperTrades PaperTrade[]
   id          String          @id @default(cuid())
   name        String
   createdAt   DateTime        @default(now())
@@ -218,4 +220,43 @@ model MissionEvent {
   ev        Json
 
   @@unique([missionId, seq])
+}
+
+// 모의매매 계좌. 실제 돈과 주문은 없다. 워크스페이스마다 하나.
+model PaperAccount {
+  workspaceId    String    @id
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  startEquity    Float     @default(10000) // USDC
+  balance        Float     @default(10000) // 실현 손익과 수수료를 반영한 잔고
+  riskPct        Float     @default(0.5) // 1회 위험, 잔고 대비 %
+  dailyStopPct   Float     @default(1.5) // 하루(UTC) 실현 손실이 이만큼이면 새 진입 금지
+  maxLeverage    Float     @default(1) // 포지션 금액 / 잔고 상한
+  updatedAt      DateTime  @updatedAt
+}
+
+// 모의 거래 하나(진입부터 청산까지).
+model PaperTrade {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  missionId   String?
+  coin        String
+  side        String // long | short
+  qty         Float
+  entry       Float
+  stop        Float
+  target      Float
+  strategy    String
+  interval    String
+  openedAt    DateTime  @default(now())
+  closeBy     DateTime // 보유 기간 상한
+  checkedTo   DateTime  @default(now()) // 이 시각까지의 1분봉으로 손절·목표를 확인함
+  status      String    @default("open") // open | closed
+  exit        Float?
+  exitReason  String? // stop | target | time | manual
+  closedAt    DateTime?
+  fees        Float     @default(0)
+  pnl         Float? // 수수료 뺀 실현 손익(USDC)
+
+  @@index([workspaceId, status])
 }

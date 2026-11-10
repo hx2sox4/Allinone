@@ -1,7 +1,6 @@
 // 사무실 화면의 기억. 서버 기록(MLogged)을 순서대로 받아 화면에 보여 줄 상태로 바꾼다.
 import type { ActKind, PlanItem } from "@/vendor/bureau/shared/protocol";
-import type { CopyDraft } from "@/lib/llm/copy";
-import { STAFF, type MEvent } from "@/lib/mission-events";
+import { STAFF, type DeskEvent, type MEvent } from "@/lib/mission-events";
 
 export interface ActView { id: string; kind: ActKind; label: string; detail: string; tool: string; at: number; done?: boolean; ok?: boolean }
 export interface AgentView { id: string; name: string; task: string; status: "working" | "done" | "failed"; acts: ActView[]; report?: string }
@@ -18,12 +17,12 @@ export interface OfficeState {
   order: string[];
   asks: Record<string, AskView>;
   files: FileView[];
-  copy: { draft: CopyDraft; warnings: string[]; model: string } | null;
+  desk: { backtest?: Extract<DeskEvent, { k: "backtest" }>; news?: Extract<DeskEvent, { k: "news" }>; timing?: Extract<DeskEvent, { k: "timing" }>; order?: Extract<DeskEvent, { k: "order" }> };
   ended: { ok: boolean; text: string } | null;
   error: string | null;
 }
 
-export const emptyState = (): OfficeState => ({ prompt: "", chefSay: "", chefSayAt: 0, chefThinking: false, plan: [], agents: {}, order: [], asks: {}, files: [], copy: null, ended: null, error: null });
+export const emptyState = (): OfficeState => ({ prompt: "", chefSay: "", chefSayAt: 0, chefThinking: false, plan: [], agents: {}, order: [], asks: {}, files: [], desk: {}, ended: null, error: null });
 
 export function reduce(s: OfficeState, ev: MEvent, now: number): OfficeState {
   switch (ev.k) {
@@ -42,12 +41,15 @@ export function reduce(s: OfficeState, ev: MEvent, now: number): OfficeState {
       if (!a) return s;
       return { ...s, agents: { ...s.agents, [ev.who]: { ...a, acts: a.acts.map((x) => (x.id === ev.id && !x.done ? { ...x, done: true, ok: ev.ok } : x)) } } };
     }
-    case "copy": return { ...s, copy: { draft: ev.draft, warnings: ev.warnings, model: ev.model } };
+    case "backtest": return { ...s, desk: { ...s.desk, backtest: ev } };
+    case "news": return { ...s, desk: { ...s.desk, news: ev } };
+    case "timing": return { ...s, desk: { ...s.desk, timing: ev } };
+    case "order": return { ...s, desk: { ...s.desk, order: ev } };
     case "report": {
       const a = s.agents[ev.who];
       if (!a) return s;
-      // 계획표 체크: 글샘의 보고는 글샘 항목을, 빛나의 첫 보고는 이미지 항목을, 두 번째 보고는 영상 항목을 끝낸 것으로 표시한다.
-      const key = ev.who === "geulsaem" ? "글샘" : a.report ? "영상" : "이미지";
+      // 계획표 체크: 보고한 직원의 항목을 끝낸 것으로 표시한다.
+      const key = `${STAFF[ev.who]?.name ?? a.name}:`;
       const plan = s.plan.map((p) => (p.text.includes(key) ? { ...p, status: "completed" as const } : p));
       return { ...s, plan, agents: { ...s.agents, [ev.who]: { ...a, report: a.report ? `${a.report}\n${ev.text}` : ev.text } } };
     }

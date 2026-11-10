@@ -79,3 +79,9 @@ body {
 .bu-warnbox { background: #fff1d6; border-radius: 8px; padding: 8px 10px; margin-top: 8px; font-size: 13px; }
 .bu-menu li { padding: 6px 0; }
 @media (max-width: 480px) { .bu-hint { display: none; } .bu-btn { padding: 6px 8px; font-size: 12px; } }
+.bu-table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 6px 0; }
+.bu-table th, .bu-table td { border-bottom: 1px solid #e8dfd0; padding: 4px 6px; text-align: right; white-space: nowrap; }
+.bu-table th:first-child, .bu-table td:first-child { text-align: left; white-space: normal; }
+.bu-scroll { overflow-x: auto; }
+.bu-pass { color: #1f7a4d; font-weight: 600; }
+.bu-fail { color: #a33a2b; font-weight: 600; }
