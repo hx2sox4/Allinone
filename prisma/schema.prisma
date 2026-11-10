@@ -1,0 +1,184 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+enum JobStatus {
+  ESTIMATED // 견적만 받은 상태. 사용자가 승인하기 전에는 Higgsfield에 제출하지 않는다.
+  QUEUED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  NSFW
+  CANCELED
+}
+
+enum AssetKind {
+  IMAGE
+  VIDEO
+}
+
+enum Approval {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime     @default(now())
+  sessions     Session[]
+  memberships  Membership[]
+  jobs         GenerationJob[]
+}
+
+model Session {
+  tokenHash String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Workspace {
+  id          String          @id @default(cuid())
+  name        String
+  createdAt   DateTime        @default(now())
+  memberships Membership[]
+  brand       BrandMemory?
+  jobs        GenerationJob[]
+  assets      Asset[]
+  briefs      Brief[]
+  brandAssets BrandAsset[]
+}
+
+model Membership {
+  userId      String
+  workspaceId String
+  role        Role
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@id([userId, workspaceId])
+}
+
+model BrandMemory {
+  workspaceId  String    @id
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  businessName String
+  industry     String
+  websiteUrl   String?
+  speechLevel  String // "존댓말" | "반말"
+  voice        String // 말투와 분위기
+  audience     String
+  offers       String
+  doSay        String
+  dontSay      String
+  channels     String[]
+  palette      String[] // hex 색상
+  updatedAt    DateTime  @updatedAt
+}
+
+model GenerationJob {
+  id            String    @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdById   String
+  createdBy     User      @relation(fields: [createdById], references: [id])
+  modelKey      String
+  input         Json
+  status        JobStatus @default(ESTIMATED)
+  estimateUsd   Decimal?  @db.Decimal(12, 6)
+  estimateKrw   Int?
+  estimateNote  String?
+  hfRequestId   String?   @unique
+  statusUrl     String?
+  cancelUrl     String?
+  error         String?
+  hfExpiresAt   DateTime? // Higgsfield가 원본 파일을 지우는 시각
+  lastCheckedAt DateTime?
+  submittedAt   DateTime?
+  finishedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  assets        Asset[]
+  briefId       String?
+  brief         Brief?    @relation(fields: [briefId], references: [id], onDelete: SetNull)
+  outputCount   Int? // 완료 때 Higgsfield가 돌려준 결과 파일 수. 복사가 끝났는지 판단하는 기준
+  sourceAssetId String? // 이 자산을 시작 이미지로 만든 영상 작업일 때
+
+  @@index([workspaceId, createdAt])
+}
+
+// 브리프: "무엇을, 어느 채널에, 몇 개" 한 번의 요청. 시안 작업 여러 개를 묶는다.
+model Brief {
+  id          String          @id @default(cuid())
+  workspaceId String
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdById String
+  what        String
+  channel     String
+  ratio       String
+  ratioNote   String? // 원하는 화면비를 모델이 지원하지 않아 바꾼 경우의 설명
+  modelKey    String
+  modelReason String
+  variants    Int
+  createdAt   DateTime        @default(now())
+  jobs        GenerationJob[]
+
+  @@index([workspaceId, createdAt])
+}
+
+// 사장님이 올린 제품 사진과 로고 (브랜드 키트)
+model BrandAsset {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  kind        String // "PRODUCT" | "LOGO"
+  name        String
+  storageKey  String
+  contentType String
+  bytes       Int
+  createdAt   DateTime  @default(now())
+}
+
+model Asset {
+  id          String        @id @default(cuid())
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  jobId       String
+  job         GenerationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  kind        AssetKind
+  storageKey  String
+  contentType String
+  bytes       Int
+  sourceUrl   String
+  aiGenerated Boolean       @default(true) // AI 생성물 표시 의무 대응용 기록
+  createdAt   DateTime      @default(now())
+  approval    Approval      @default(PENDING)
+  // 버전 기록: 문구를 얹은 새 버전은 원본을 parentAssetId로 가리킨다.
+  parentAssetId String?
+  version       Int         @default(1)
+  overlayText   String?
+  virtualPersonLabel Boolean @default(false) // '가상인물' 표시를 넣었는지
+
+  @@unique([jobId, sourceUrl])
+}
+
+model WebhookDelivery {
+  webhookId  String   @id
+  requestId  String
+  receivedAt DateTime @default(now())
+}

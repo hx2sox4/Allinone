@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+body {
+  font-family: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+  word-break: keep-all;
+}
+
+@keyframes intro-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+.intro-in { animation: intro-in 0.35s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .intro-in { animation: none; }
+}
+
+/* Pretendard (SIL Open Font License 1.1). 라이선스: /fonts/Pretendard-LICENSE.txt */
+@font-face { font-family: "Pretendard"; font-weight: 400; font-display: swap; src: url("/fonts/Pretendard-Regular.woff2") format("woff2"); }
+@font-face { font-family: "Pretendard"; font-weight: 700; font-display: swap; src: url("/fonts/Pretendard-Bold.woff2") format("woff2"); }
